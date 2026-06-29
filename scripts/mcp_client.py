@@ -28,6 +28,9 @@ RESULTS_KEY = "results"
 EXIT_OK = 0
 EXIT_FAILURE = 1
 
+SESSION_SOURCE = "session"
+DISTILLED_SOURCE = "distilled"
+
 
 def _int_env(name: str, default: int) -> int:
     try:
@@ -136,10 +139,20 @@ class Mem0Client:
         })
         return data.get(RESULTS_KEY, []) if isinstance(data, dict) else []
 
-    def add_memory(self, text: str, messages: list | None = None):
+    def list_memories(self, limit: int = 500) -> list:
+        data = self.call_tool("get_memories", {"user_id": self.config.user_id, "limit": limit})
+        return data.get(RESULTS_KEY, []) if isinstance(data, dict) else []
+
+    def delete_memory(self, memory_id: str):
+        return self.call_tool("delete_memory", {"memory_id": memory_id})
+
+    def add_memory(self, text: str, messages: list | None = None, infer: bool = True,
+                   metadata: dict | None = None):
         # This server requires ``text`` even when ``messages`` is supplied;
         # send both so structured roles are available where supported.
-        arguments: dict = {"user_id": self.config.user_id, "text": text}
+        arguments: dict = {"user_id": self.config.user_id, "text": text, "infer": infer}
         if messages:
             arguments["messages"] = messages
+        if metadata:
+            arguments["metadata"] = metadata
         return self.call_tool(ADD_TOOL, arguments)

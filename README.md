@@ -56,12 +56,37 @@ the sane way to expose it on a LAN.
 ## What runs when
 
 On **session start** the hook searches for memories about the current project
-and branch and injects them as `additionalContext`. On **stop** it reads the
-last few transcript turns and stores them via `add_memory`, letting mem0 do its
-own fact extraction.
+and branch and injects them as `additionalContext`. On **stop** it stores the
+exchange that just finished **verbatim** (`infer=False`), tagged `source:
+session`.
+
+Verbatim rather than distilled on purpose: mem0's inline fact-extraction depends
+on the configured LLM producing strict JSON, which small local models do
+unreliably. Capturing raw keeps writes fast and lossless; the distillation runs
+later as a separate pass (see below).
 
 Both hooks fail open: if the endpoint is unset or unreachable they print nothing
 and exit 0. A memory outage should never be the thing that blocks your session.
+
+## Distillation (post-processing)
+
+`/<plugin>:distill` runs `scripts/distill.py`: it pulls the raw `source: session`
+captures, has a local LLM distil them into durable facts **under a strict JSON
+schema** (via Ollama's `format` parameter, so the model is grammar-constrained to
+valid output — the enforcement mem0's inline path lacks), writes the facts back
+tagged `source: distilled`, and deletes the consumed raw captures. It is
+latency-tolerant, so it can use a heavier model than a hook could.
+
+Run it on demand, or schedule it (e.g. end of day). Configure via env:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `DISTILL_OLLAMA_URL` | `http://localhost:11434` | Ollama endpoint for extraction. |
+| `DISTILL_MODEL` | `gemma4:12b-ctx32k` | Extraction model (use a context-rich build). |
+
+The graph store (`MEM0_ENABLE_GRAPH`) is a natural extension of this pass: entity
+and relationship extraction belongs in the same latency-tolerant post-processing
+step, not in the real-time hook.
 
 ## Skills
 

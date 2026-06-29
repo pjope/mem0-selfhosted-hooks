@@ -1,7 +1,7 @@
 {
   "name": "mem0-selfhosted-hooks",
-  "version": "0.1.0",
-  "description": "Session hooks that auto-recall and auto-save memories against a self-hosted mem0 MCP endpoint — no cloud, no m0- key. Injects relevant memories on session start and stores a summary on stop.",
+  "version": "0.3.0",
+  "description": "Session hooks and skills for a self-hosted mem0 MCP endpoint — no cloud, no m0- key. Recalls memories on session start, captures each exchange verbatim on stop, and distils them into facts with a local LLM.",
   "author": { "name": "Phil Jope" },
   "homepage": "https://github.com/pjope/mem0-selfhosted-hooks",
   "repository": "https://github.com/pjope/mem0-selfhosted-hooks",

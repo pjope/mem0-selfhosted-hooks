@@ -1,7 +1,10 @@
-"""Stop hook: save the tail of the transcript to mem0.
+"""Stop hook: save the exchange that just completed to mem0, verbatim.
 
-Exits 0 on any failure so a memory outage never blocks shutdown; skips
-re-entrant stop events to avoid a save loop.
+Stores with infer=False — this deployment's extraction LLM is unreliable, so the
+hook captures the raw last user/assistant exchange rather than relying on mem0 to
+distil facts. Only the latest exchange is taken (not a sliding window) so each
+turn is recorded once without overlap. Exits 0 on any failure and skips
+re-entrant stop events.
 """
 
 from __future__ import annotations
@@ -9,15 +12,14 @@ from __future__ import annotations
 import json
 import os
 import sys
-from collections import deque
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from mcp_client import EXIT_OK, Mem0Client, Mem0Config  # noqa: E402
+from mcp_client import EXIT_OK, SESSION_SOURCE, Mem0Client, Mem0Config  # noqa: E402
 
-MAX_MESSAGES = 6
-MAX_CHARS_PER_MESSAGE = 4000
+MAX_CHARS_PER_ROLE = 4000
 RELEVANT_ROLES = ("user", "assistant")
+ROLE_LABELS = {"user": "User", "assistant": "Assistant"}
 
 
 def _text_from_content(content) -> str:
@@ -33,8 +35,8 @@ def _text_from_content(content) -> str:
     return ""
 
 
-def _read_transcript(path: str) -> list[dict]:
-    messages: deque = deque(maxlen=MAX_MESSAGES)
+def _latest_exchange(path: str) -> dict:
+    latest = {role: "" for role in RELEVANT_ROLES}
     with open(path, encoding="utf-8") as handle:
         for raw in handle:
             raw = raw.strip()
@@ -50,8 +52,8 @@ def _read_transcript(path: str) -> list[dict]:
                 continue
             text = _text_from_content(message.get("content")).strip()
             if text:
-                messages.append({"role": role, "content": text[:MAX_CHARS_PER_MESSAGE]})
-    return list(messages)
+                latest[role] = text[:MAX_CHARS_PER_ROLE]
+    return latest
 
 
 def _read_payload() -> dict:
@@ -76,15 +78,13 @@ def main() -> None:
         sys.exit(EXIT_OK)
 
     try:
-        messages = _read_transcript(transcript)
-        if not messages:
+        exchange = _latest_exchange(transcript)
+        parts = [f"{ROLE_LABELS[role]}: {exchange[role]}" for role in RELEVANT_ROLES if exchange[role]]
+        if not parts:
             sys.exit(EXIT_OK)
-        transcript_text = "\n\n".join(
-            f"{message['role']}: {message['content']}" for message in messages
-        )
         client = Mem0Client(config)
         client.connect()
-        client.add_memory(text=transcript_text, messages=messages)
+        client.add_memory(text="\n\n".join(parts), infer=False, metadata={"source": SESSION_SOURCE})
     except Exception:
         sys.exit(EXIT_OK)
 
