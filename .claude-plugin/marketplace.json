@@ -1,0 +1,17 @@
+{
+  "name": "mem0-selfhosted-hooks",
+  "owner": {
+    "name": "Phil Jope"
+  },
+  "metadata": {
+    "description": "Self-hosted mem0 session hooks for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "mem0-selfhosted-hooks",
+      "source": "./",
+      "description": "Auto-recall on session start and auto-save on stop against a self-hosted mem0 MCP endpoint.",
+      "version": "0.1.0"
+    }
+  ]
+}
