@@ -55,10 +55,13 @@ the sane way to expose it on a LAN.
 
 ## What runs when
 
-On **session start** the hook searches for memories about the current project
-and branch and injects them as `additionalContext`. On **stop** it stores the
-exchange that just finished **verbatim** (`infer=False`), tagged `source:
-session`.
+On **session start** the hook searches for memories about the current project and
+branch and injects them as `additionalContext` — **facts-first**: raw verbatim
+captures (`source: session`/`archived`) are filtered out so only distilled facts
+and curated memories surface in auto-recall. On **stop** it stores the turn that
+just finished **verbatim** (`infer=False`) — the user prompt plus all assistant
+text of the turn (tool calls/results excluded), split into embed-sized chunks so
+every chunk is fully indexed — tagged `source: session`.
 
 Verbatim rather than distilled on purpose: mem0's inline fact-extraction depends
 on the configured LLM producing strict JSON, which small local models do
@@ -74,7 +77,8 @@ and exit 0. A memory outage should never be the thing that blocks your session.
 captures, has a local LLM distil them into durable facts **under a strict JSON
 schema** (via Ollama's `format` parameter, so the model is grammar-constrained to
 valid output — the enforcement mem0's inline path lacks), writes the facts back
-tagged `source: distilled`, and deletes the consumed raw captures. It is
+tagged `source: distilled`, then **re-tags the consumed raw captures `source:
+archived`** (kept and searchable, but skipped by future distill runs). It is
 latency-tolerant, so it can use a heavier model than a hook could.
 
 Run it on demand, or schedule it (e.g. end of day). Configure via env:

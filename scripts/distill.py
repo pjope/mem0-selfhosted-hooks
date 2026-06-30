@@ -19,6 +19,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from mcp_client import (  # noqa: E402
+    ARCHIVED_SOURCE,
     DISTILLED_SOURCE,
     EXIT_FAILURE,
     EXIT_OK,
@@ -29,9 +30,9 @@ from mcp_client import (  # noqa: E402
 
 DEFAULT_MODEL = "gemma4:12b-ctx32k"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
-OLLAMA_TIMEOUT_SECONDS = 240
+OLLAMA_TIMEOUT_SECONDS = 360
 MEM0_WRITE_TIMEOUT_SECONDS = 90
-MAX_INPUT_CHARS = 16000
+MAX_INPUT_CHARS = 24000
 DEFAULT_FACT_TYPE = "task_learning"
 FACT_TYPES = [
     "decision", "convention", "anti_pattern",
@@ -130,7 +131,7 @@ def main() -> int:
         return EXIT_OK
 
     print(f"Distilling {len(raw)} raw capture(s) with {_model()}…")
-    facts_written, raw_removed = 0, 0
+    facts_written, raw_archived = 0, 0
     for batch in _batches(raw):
         joined = "\n\n---\n\n".join(m.get("memory") or "" for m in batch)
         try:
@@ -146,11 +147,14 @@ def main() -> int:
             )
         facts_written += len(facts)
         for memory in batch:
-            if memory.get("id"):
-                client.delete_memory(memory["id"])
-                raw_removed += 1
+            if not memory.get("id"):
+                continue
+            archived = {**(memory.get("metadata") or {}), "source": ARCHIVED_SOURCE}
+            client.add_memory(text=memory.get("memory") or "", infer=False, metadata=archived)
+            client.delete_memory(memory["id"])
+            raw_archived += 1
 
-    print(f"Done: {raw_removed} raw capture(s) -> {facts_written} fact(s).")
+    print(f"Done: {raw_archived} raw capture(s) archived -> {facts_written} fact(s).")
     return EXIT_OK
 
 

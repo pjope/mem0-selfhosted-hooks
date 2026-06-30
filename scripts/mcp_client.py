@@ -30,6 +30,8 @@ EXIT_FAILURE = 1
 
 SESSION_SOURCE = "session"
 DISTILLED_SOURCE = "distilled"
+ARCHIVED_SOURCE = "archived"
+RAW_SOURCES = (SESSION_SOURCE, ARCHIVED_SOURCE)
 
 
 def _int_env(name: str, default: int) -> int:

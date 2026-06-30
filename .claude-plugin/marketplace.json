@@ -11,7 +11,7 @@
       "name": "mem0-selfhosted-hooks",
       "source": "./",
       "description": "Auto-recall on session start and auto-save on stop against a self-hosted mem0 MCP endpoint.",
-      "version": "0.3.0"
+      "version": "0.4.0"
     }
   ]
 }

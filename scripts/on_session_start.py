@@ -13,9 +13,10 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from mcp_client import EXIT_OK, Mem0Client, Mem0Config  # noqa: E402
+from mcp_client import EXIT_OK, RAW_SOURCES, Mem0Client, Mem0Config  # noqa: E402
 
 MAX_MEMORIES = 12
+RECALL_SEARCH_LIMIT = 30
 GIT_TIMEOUT_SECONDS = 3
 HOOK_EVENT = "SessionStart"
 CONTEXT_HEADER = "# mem0 Cross-Session Memory"
@@ -48,7 +49,9 @@ def _collect(client: Mem0Client, queries: list[str]) -> list[str]:
     seen: set = set()
     lines: list[str] = []
     for query in queries:
-        for memory in client.search_memories(query):
+        for memory in client.search_memories(query, limit=RECALL_SEARCH_LIMIT):
+            if (memory.get("metadata") or {}).get("source") in RAW_SOURCES:
+                continue
             identifier = memory.get("id")
             if identifier in seen:
                 continue
